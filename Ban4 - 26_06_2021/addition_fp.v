@@ -1,144 +1,72 @@
-module addition_fp(o, a, b, valid_in, valid_out);
+module addition_fp (Sum, InA, InB, valid_in, valid_out);
+	input [31:0] InA, InB;
 	input valid_in;
-	input [31:0] a, b;
-	output reg [31:0] o;
+	output [31:0] Sum;
 	output reg valid_out;
+	reg [7:0] Exponent, Exponent_A, Exponent_B, Exponent_A_Out, Exponent_B_Out;
+	reg  Sign_A, Sign_B, Sign, S, Temp;
+	reg [23:0] Fraction_A,  Fraction_B, Fraction, Fraction_A_Out, Fraction_B_Out;
+	reg [24:0] Result_Fraction, Fraction_Temp;
+	reg [7:0] Ex_Difference;
 	
-	reg [23:0] aM, bM, sM;
-	reg [23:0]	tM;
-	reg [7:0] aE, bE, tE;
-	reg aS, bS, tS, x;
-	
-	always @ (*) begin
-		if (valid_in) begin
-			aM[23:0] = {1'b1,a[22:0]};
-			bM[23:0] = {1'b1,b[22:0]};
-			
-			aE[7:0] = a[30:23];
-			bE[7:0] = b[30:23]; 
-			
-			aS = a[31];
-			bS = b[31];
-			
-	// Quy ve dong MU
-			if (aE[7:0] > bE[7:0]) begin
-				tE = aE - bE;	
-				bM = bM >> tE;	
-				tE = aE;
-			end else if (bE[7:0] > aE[7:0]) begin
-				tE = bE - aE;
-				aM = aM >> tE;	
-				tE = bE;
-			end else begin
-				tE = aE;
-			end
-	// Xu ly theo dau	
-			if ((aS^bS)==1'b1) begin // Khac dau
-				if (aM>=bM) begin
-					{x,tM} = aM - bM;
-					if (bM==aM) begin
-						tS = 0;
-					end else begin
-						tS = aS;
-					end
-				end else begin
-					{x,tM} = bM - aM;
-					tS = bS;
-				end
-	//////////////////////////////////////////
-				if(tM[23]==1) begin
-						tM = tM;
-				end else if (tM[22]==1) begin
-						tM = tM << 1;
-						tE = tE - 8'd1;
-				end else if (tM[21]==1) begin
-						tM = tM << 2;
-						tE = tE - 8'd2;
-				end else if (tM[20]==1) begin
-						tM = tM << 3;
-						tE = tE - 8'd3;
-				end else if (tM[19]==1) begin
-						tM = tM << 4;
-						tE = tE - 8'd4;
-				end else if (tM[18]==1) begin
-						tM = tM << 5;
-						tE = tE - 8'd5;
-				end else if (tM[17]==1) begin
-						tM = tM << 6;
-						tE = tE - 8'd6;
-				end else if (tM[16]==1) begin
-						tM = tM << 7;
-						tE = tE - 8'd7;
-				end else if (tM[15]==1) begin
-						tM = tM << 8;
-						tE = tE - 8'd8;
-				end else if (tM[14]==1) begin
-						tM = tM << 9;
-						tE = tE - 8'd9;
-				end else if (tM[13]==1) begin
-						tM = tM << 10;
-						tE = tE - 8'd10;
-				end else if (tM[12]==1) begin
-						tM = tM << 11;
-						tE = tE - 8'd11;
-				end else if (tM[11]==1) begin
-						tM = tM << 12;
-						tE = tE - 8'd12;
-				end else if (tM[10]==1) begin
-						tM = tM << 13;
-						tE = tE - 8'd13;
-				end else if (tM[9]==1) begin
-						tM = tM << 14;
-						tE = tE - 8'd14;
-				end else if (tM[8]==1) begin
-						tM = tM << 15;
-						tE = tE - 8'd15;
-				end else if (tM[7]==1) begin
-						tM = tM << 16;
-						tE = tE - 8'd16;
-				end else if (tM[6]==1) begin
-						tM = tM << 17;
-						tE = tE - 8'd17;
-				end else if (tM[5]==1) begin
-						tM = tM << 18;
-						tE = tE - 8'd18;
-				end else if (tM[4]==1) begin
-						tM = tM << 19;
-						tE = tE - 8'd19;
-				end else if (tM[3]==1) begin
-						tM = tM << 20;
-						tE = tE - 8'd20;
-				end else if (tM[2]==1) begin
-						tM = tM << 21;
-						tE = tE - 8'd21;
-				end else if (tM[1]==1) begin
-						tM = tM << 22;
-						tE = tE - 8'd22;
-				end else if (tM[0]==1) begin
-						tM = tM << 23;
-						tE = tE - 8'd23;
-				end else begin
-						tS = 0;
-						tE = 0;
-						tM = 0;
-				end	
-	//////////////////////////////////////////////		
-			end else begin // Cung dau
-				{x,tM} = aM + bM;
-				if (x==1) begin
-					tE = tE + 8'd1;
-					tM = tM >> 1;
-				end
-				tS = aS;
-			end
-			
-			o[31] = tS;
-			o[30:23] = tE[7:0];
-			o[22:0] = tM[22:0];
-			valid_out = 1'b1;
+always @ (InA or InB or valid_in) begin
+	if (valid_in) begin
+		//initial
+		Sign_A = InA[31];
+		Sign_B = InB[31];
+		Exponent_A = InA[30:23];
+		Exponent_B = InB[30:23];
+		Fraction_A = {1'b1, InA[22:0]};
+		Fraction_B = {1'b1, InB[22:0]};
+		//compare Exponent
+		if (Exponent_A == Exponent_B)
+		begin
+			Exponent_A_Out = Exponent_A + 8'd1;
+			Exponent_B_Out = Exponent_B + 8'd1;
+			Fraction_A_Out = Fraction_A;
+			Fraction_B_Out = Fraction_B;
+			S = 1'b1;
 		end
-		else valid_out = 1'b0;
+		else if (Exponent_A > Exponent_B)
+		begin
+			Ex_Difference = Exponent_A - Exponent_B; 
+			Exponent_A_Out = Exponent_A + 8'd1;
+			Exponent_B_Out = Exponent_A + 8'd1;
+			Fraction_A_Out = Fraction_A;
+			Fraction_B_Out = Fraction_B >> Ex_Difference;
+			S = 1'b1;
+		end
+		else
+		begin
+			Ex_Difference = Exponent_B - Exponent_A;
+			Exponent_A_Out = Exponent_B + 8'd1;
+			Exponent_B_Out = Exponent_B + 8'd1;
+			Fraction_A_Out = Fraction_B;
+			Fraction_B_Out = Fraction_A >> Ex_Difference;
+			S = 1'b0;
+		end
+		//Sub Add
+		if (Sign_A ^ Sign_B)
+			Result_Fraction = Fraction_A_Out - Fraction_B_Out;
+		else
+			Result_Fraction = Fraction_A_Out + Fraction_B_Out;
+		//normalize
+		Temp = Sign_A ^ Sign_B;
+		Sign = S ? (Sign_A ^ (Result_Fraction[24] & Temp)) : (Sign_B ^ (Result_Fraction[24] & Temp));
+		Fraction_Temp = (Result_Fraction[24] & Temp) ? (~Result_Fraction + 25'd1) : Result_Fraction;
+		Fraction = Fraction_Temp[24:1];
+		Exponent = Exponent_A_Out;
+		repeat(24)
+		begin
+			if (Fraction[23] == 1'b0)
+			begin
+				Fraction = Fraction << 1'b1;
+				Exponent = Exponent - 8'd1;
+			end
+		end
+		valid_out <= 1'b1;
 	end
-	
+	else valid_out <= 1'b0;
+end
+	assign Sum = (valid_out) ? ((InA == 32'd0 && InB == 32'd0) ? 32'd0 :{Sign, Exponent, Fraction[22:0]}) : 32'dZ;
 endmodule
-
