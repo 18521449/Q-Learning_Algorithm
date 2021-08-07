@@ -1,7 +1,7 @@
 module next_state (i_st, i_at, o_next_st, i_valid);
 `include "params.sv"
 
-input 									i_valid;
+input 					i_valid;
 input 		[STATES_WIDTH-1:0] 	i_st;
 input 		[ACTIONS_WIDTH-1:0] 	i_at;
 output reg 	[STATES_WIDTH-1:0] 	o_next_st;
